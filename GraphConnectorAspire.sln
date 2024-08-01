@@ -1,0 +1,48 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.10.35027.167
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GraphConnectorAspire.AppHost", "GraphConnectorAspire.AppHost\GraphConnectorAspire.AppHost.csproj", "{D5F16198-BFCF-49B0-95EF-B22F0120904A}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GraphConnectorAspire.ServiceDefaults", "GraphConnectorAspire.ServiceDefaults\GraphConnectorAspire.ServiceDefaults.csproj", "{1D6FCA60-5D2F-43CA-A91B-6507F1AB27E1}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GraphConnector.Library", "GraphConnector.Library\GraphConnector.Library.csproj", "{BA45C109-BAB3-41F5-A651-62F71C8B2687}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GraphConnector.Api.Queue", "GraphConnector.Api.Queue\GraphConnector.Api.Queue.csproj", "{A93C0F72-AD0D-4A93-961F-C3025F6703D5}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GraphConnector.Service.Queue", "GraphConnector.Service.Queue\GraphConnector.Service.Queue.csproj", "{34806441-DBEE-42C4-9A2F-384ED3A9EBF6}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{D5F16198-BFCF-49B0-95EF-B22F0120904A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D5F16198-BFCF-49B0-95EF-B22F0120904A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D5F16198-BFCF-49B0-95EF-B22F0120904A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D5F16198-BFCF-49B0-95EF-B22F0120904A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1D6FCA60-5D2F-43CA-A91B-6507F1AB27E1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1D6FCA60-5D2F-43CA-A91B-6507F1AB27E1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1D6FCA60-5D2F-43CA-A91B-6507F1AB27E1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1D6FCA60-5D2F-43CA-A91B-6507F1AB27E1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BA45C109-BAB3-41F5-A651-62F71C8B2687}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BA45C109-BAB3-41F5-A651-62F71C8B2687}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BA45C109-BAB3-41F5-A651-62F71C8B2687}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BA45C109-BAB3-41F5-A651-62F71C8B2687}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A93C0F72-AD0D-4A93-961F-C3025F6703D5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A93C0F72-AD0D-4A93-961F-C3025F6703D5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A93C0F72-AD0D-4A93-961F-C3025F6703D5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A93C0F72-AD0D-4A93-961F-C3025F6703D5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{34806441-DBEE-42C4-9A2F-384ED3A9EBF6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{34806441-DBEE-42C4-9A2F-384ED3A9EBF6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{34806441-DBEE-42C4-9A2F-384ED3A9EBF6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{34806441-DBEE-42C4-9A2F-384ED3A9EBF6}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {DF4057DD-4D00-4D7C-BCC6-65E3E8BCD1F7}
+	EndGlobalSection
+EndGlobal

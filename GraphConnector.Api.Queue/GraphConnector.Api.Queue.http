@@ -1,0 +1,6 @@
+@GraphConnector.Api.Queue_HostAddress = http://localhost:5054
+
+GET {{GraphConnector.Api.Queue_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
