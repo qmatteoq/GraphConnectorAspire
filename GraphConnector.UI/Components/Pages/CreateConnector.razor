@@ -1,0 +1,69 @@
+﻿@page "/createConnector"
+
+@inject IConfiguration configuration
+@inject GraphConnectorApiClient apiClient
+@using GraphConnector.Library.Requests
+@using GraphConnector.UI.Services
+@rendermode InteractiveServer
+
+<h3>Create Connector</h3>
+
+<div>
+    <label for="ConnectorName">Connector Name</label>
+    <input type="text" id="ConnectorName" @bind="ConnectorName" />
+</div>
+
+<div>
+    <label for="ConnectorDescription">Connector Description</label>
+    <input type="text" id="ConnectorDescription" @bind="ConnectorDescription" />
+</div>
+
+<div>
+    <label for="ConnectorId">Connector Id</label>
+    <input type="text" id="ConnectorId" @bind="ConnectorId" />
+</div>
+
+<div>
+    <label for="FeedUrl">Feed Url</label>
+    <input type="text" id="FeedUrl" @bind="FeedUrl" />
+</div>
+
+<br />
+<p>
+    <button class="btn btn-primary" @onclick="CreateGraphConnector">Create Connector</button>
+</p>
+<p>
+    <button class="btn btn-primary" @onclick="CreateSchema">Create Schema</button>
+</p>
+
+@code {
+    private string ConnectorName;
+    private string ConnectorDescription;
+    private string ConnectorId;
+    private string FeedUrl;
+
+
+    private async Task CreateGraphConnector()
+    {
+        QueueConnectionRequest request = new QueueConnectionRequest
+            {
+                Action = "create",
+                ConnectorId = ConnectorId,
+                ConnectorName = ConnectorName,
+                ConnectorDescription = ConnectorDescription
+            };
+
+        await apiClient.QueueConnectionRequestAsync(request);
+    }
+
+    public async Task CreateSchema()
+    {
+        QueueSchemaRequest request = new QueueSchemaRequest
+        {
+            Action = "create",
+            ConnectorId = ConnectorId
+        };
+
+        await apiClient.QueueSchemaRequestAsync(request);
+    }
+}

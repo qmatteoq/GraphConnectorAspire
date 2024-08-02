@@ -5,10 +5,10 @@ using Microsoft.Graph.Models.ExternalConnectors;
 
 namespace GraphConnector.Library.Configuration
 {
-    public static class ConnectionConfiguration
+    public class ConnectionConfiguration : IConnectionConfiguration
     {
-        private static Dictionary<string, object>? _layout;
-        private static Dictionary<string, object> Layout
+        private Dictionary<string, object>? _layout;
+        private Dictionary<string, object> Layout
         {
             get
             {
@@ -23,68 +23,96 @@ namespace GraphConnector.Library.Configuration
             }
         }
 
-        public static ExternalConnection ExternalConnection => new ExternalConnection
+        public ExternalConnection GetExternalConnection(string connectorId, string connectorName, string connectorDescription)
         {
-            Id = "learndocs",
-            Name = "Docs",
-            Description = "Documentation for Microsoft Graph API which explains what Microsoft Graph is and how to use it.",
-            ActivitySettings = new()
+
+            return new ExternalConnection
             {
-                UrlToItemResolvers = new()
+                Id = connectorId,
+                Name = connectorName,
+                Description = connectorDescription,
+                SearchSettings = new()
                 {
-                    new ItemIdResolver
+                    SearchResultTemplates = new()
                     {
-                        UrlMatchInfo = new()
+                        new()
                         {
-                            BaseUrls = new() { "https://learn.microsoft.com" },
-                            UrlPattern = "/[^/]+/graph/auth/(?<slug>[^/]+)",
-                        },
-                        ItemId = "auth__{slug}",
-                        Priority = 1
-                    },
-                    new ItemIdResolver
-                    {
-                        UrlMatchInfo = new()
-                        {
-                            BaseUrls = new() { "https://learn.microsoft.com" },
-                            UrlPattern = "/[^/]+/graph/sdks/(?<slug>[^/]+)",
-                        },
-                        ItemId = "sdks__{slug}",
-                        Priority = 2
-                    },
-                    new ItemIdResolver
-                    {
-                        UrlMatchInfo = new()
-                        {
-                            BaseUrls = new() { "https://learn.microsoft.com" },
-                            UrlPattern = "/[^/]+/graph/(?<slug>[^/]+)",
-                        },
-                        ItemId = "{slug}",
-                        Priority = 3
-                    }
-                }
-            },
-            SearchSettings = new()
-            {
-                SearchResultTemplates = new()
-                {
-                    new()
-                    {
-                        Id = "msgraphdocs",
-                        Priority = 1,
-                        Layout = new Json
-                        {
-                            AdditionalData = Layout
+                            Id = connectorId,
+                            Priority = 1,
+                            Layout = new Json
+                            {
+                                AdditionalData = Layout
+                            }
                         }
                     }
                 }
-            }
-        };
+            };
+        }
 
-        public static Schema Schema => new Schema
+        //public static ExternalConnection ExternalConnection => new ExternalConnection
+        //{
+        //    Id = "learndocs",
+        //    Name = "Docs",
+        //    Description = "Documentation for Microsoft Graph API which explains what Microsoft Graph is and how to use it.",
+        //    //ActivitySettings = new()
+        //    //{
+        //    //    UrlToItemResolvers = new()
+        //    //    {
+        //    //        new ItemIdResolver
+        //    //        {
+        //    //            UrlMatchInfo = new()
+        //    //            {
+        //    //                BaseUrls = new() { "https://learn.microsoft.com" },
+        //    //                UrlPattern = "/[^/]+/graph/auth/(?<slug>[^/]+)",
+        //    //            },
+        //    //            ItemId = "auth__{slug}",
+        //    //            Priority = 1
+        //    //        },
+        //    //        new ItemIdResolver
+        //    //        {
+        //    //            UrlMatchInfo = new()
+        //    //            {
+        //    //                BaseUrls = new() { "https://learn.microsoft.com" },
+        //    //                UrlPattern = "/[^/]+/graph/sdks/(?<slug>[^/]+)",
+        //    //            },
+        //    //            ItemId = "sdks__{slug}",
+        //    //            Priority = 2
+        //    //        },
+        //    //        new ItemIdResolver
+        //    //        {
+        //    //            UrlMatchInfo = new()
+        //    //            {
+        //    //                BaseUrls = new() { "https://learn.microsoft.com" },
+        //    //                UrlPattern = "/[^/]+/graph/(?<slug>[^/]+)",
+        //    //            },
+        //    //            ItemId = "{slug}",
+        //    //            Priority = 3
+        //    //        }
+        //    //    }
+        //    //},
+        //    SearchSettings = new()
+        //    {
+        //        SearchResultTemplates = new()
+        //        {
+        //            new()
+        //            {
+        //                Id = "msgraphdocs",
+        //                Priority = 1,
+        //                Layout = new Json
+        //                {
+        //                    AdditionalData = Layout
+        //                }
+        //            }
+        //        }
+        //    }
+        //};
+
+        public Schema GetSchema()
         {
-            BaseType = "microsoft.graph.externalItem",
-            Properties = new()
+            return new Schema
+            {
+                BaseType = "microsoft.graph.externalItem",
+                Properties = new()
             {
                 new Property
                 {
@@ -109,8 +137,16 @@ namespace GraphConnector.Library.Configuration
                     Type = PropertyType.String,
                     IsRetrievable = true,
                     Labels = new() { Label.Url }
+                },
+                new Property
+                {
+                    Name = "publishDate",
+                    Type = PropertyType.DateTime,
+                    IsRetrievable = true,
+                    Labels = new() { Label.CreatedDateTime }
                 }
             }
-        };
+            };
+        }
     }
 }

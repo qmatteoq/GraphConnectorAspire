@@ -10,7 +10,6 @@ var builder = Host.CreateApplicationBuilder(args);
 
 builder.AddServiceDefaults();
 builder.AddRabbitMQClient("messaging");
-//builder.Configuration.AddUserSecrets("dotnet-GraphConnector.Service.Queue-c351d448-6acf-4794-ae62-71d9f5c336d1");
 builder.Services.AddSingleton(s =>
 {
     var handler = Utils.GetHttpClientHandler();
@@ -60,6 +59,8 @@ builder.Services.AddSingleton(s =>
 
     return new DocumentsServiceClient(httpClient);
 });
+
+builder.Services.AddSingleton<IConnectionConfiguration, ConnectionConfiguration>();
 
 builder.Services.AddHostedService<Worker>();
 

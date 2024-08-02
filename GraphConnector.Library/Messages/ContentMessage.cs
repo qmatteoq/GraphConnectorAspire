@@ -7,23 +7,25 @@
         RemoveDeleted
     }
 
-    internal enum ItemAction
+    public enum ItemAction
     {
         Update,
         Delete
     }
 
-    internal enum ContentAction
+    public enum ContentAction
     {
-        Crawl,
-        Item
+        Create,
+        Delete
     }
 
-    internal class ContentMessage
+    public class ContentMessage
     {
         public ContentAction? Action { get; set; }
         public CrawlType? CrawlType { get; set; }
         public ItemAction? ItemAction { get; set; }
-        public string? ItemId { get; set; }
+        public string? Url { get; set;}
+
+        public string? ConnectorId { get; set; }
     }
 }

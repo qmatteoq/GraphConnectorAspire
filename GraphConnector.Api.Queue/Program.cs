@@ -1,9 +1,7 @@
 using GraphConnector.Library.Configuration;
 using GraphConnector.Library.Messages;
 using GraphConnector.Library.Requests;
-using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Graph.Models;
 using RabbitMQ.Client;
 using System.Text;
 using System.Text.Json;
@@ -30,13 +28,12 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-
 app.UseHttpsRedirection();
 
-app.MapPost("/queueConnection", ([FromServices] IConnection connection, [FromServices] ILogger<Program> logger, [FromBody] QueueConnectionRequest connectionMessage) =>
+app.MapPost("/createConnection", ([FromServices] IConnection connection, [FromServices] ILogger<Program> logger, [FromBody] QueueConnectionRequest connectionRequest) =>
 {
     ConnectionMessageAction action;
-    switch (connectionMessage.Action)
+    switch (connectionRequest.Action)
     {
         case "create":
             action = ConnectionMessageAction.Create;
@@ -53,17 +50,13 @@ app.MapPost("/queueConnection", ([FromServices] IConnection connection, [FromSer
     ConnectionMessage message = new ConnectionMessage
     {
         Action = action,
-        ConnectorId = ConnectionConfiguration.ExternalConnection.Id
+        ConnectorId = connectionRequest.ConnectorId,
+        ConnectorDescription = connectionRequest.ConnectorDescription,
+        ConnectorName = connectionRequest.ConnectorName
     };
 
     using (var channel = connection.CreateModel())
     {
-        channel.QueueDeclare(queue: "connections",
-                             durable: true,
-                             exclusive: false,
-                             autoDelete: false,
-                             arguments: null);
-
         var jsonMessage = JsonSerializer.Serialize(message);
 
         var body = Encoding.UTF8.GetBytes(jsonMessage);
@@ -79,6 +72,90 @@ app.MapPost("/queueConnection", ([FromServices] IConnection connection, [FromSer
     return TypedResults.Ok();
 })
 .WithName("CreateConnection")
+.WithOpenApi();
+
+app.MapPost("/createSchema", ([FromServices] IConnection connection, [FromServices] ILogger<Program> logger, [FromBody] QueueConnectionRequest schemaRequest) =>
+{
+    ConnectionMessageAction action;
+    switch (schemaRequest.Action)
+    {
+        case "create":
+            action = ConnectionMessageAction.Create;
+            break;
+        case "delete":
+            action = ConnectionMessageAction.Delete;
+            break;
+        case "status":
+        default:
+            action = ConnectionMessageAction.Status;
+            break;
+    }
+
+    ConnectionMessage message = new ConnectionMessage
+    {
+        Action = action,
+        ConnectorId = schemaRequest.ConnectorId
+    };
+
+    using (var channel = connection.CreateModel())
+    {
+
+        var jsonMessage = JsonSerializer.Serialize(message);
+
+        var body = Encoding.UTF8.GetBytes(jsonMessage);
+
+        channel.BasicPublish(exchange: string.Empty,
+                             routingKey: "schema",
+                             basicProperties: null,
+                             body: body);
+
+        logger.LogInformation($"Sent message: {jsonMessage}");
+    }
+
+    return TypedResults.Ok();
+})
+.WithName("CreateSchema")
+.WithOpenApi();
+
+app.MapPost("/uploadContent", ([FromServices] IConnection connection, [FromServices] ILogger<Program> logger, [FromBody] QueueContentRequest contentMessage) =>
+{
+    ContentAction action;
+    switch (contentMessage.Action)
+    {
+        case "create":
+            action = ContentAction.Create;
+            break;
+        case "delete":
+            action = ContentAction.Delete;
+            break;
+        default:
+            action = ContentAction.Create;
+            break;
+    }
+
+    ContentMessage message = new ContentMessage
+    {
+        Action = action,
+        Url = contentMessage.Url
+    };
+
+    using (var channel = connection.CreateModel())
+    {
+        var jsonMessage = JsonSerializer.Serialize(message);
+
+        var body = Encoding.UTF8.GetBytes(jsonMessage);
+
+        channel.BasicPublish(exchange: string.Empty,
+                             routingKey: "content",
+                             basicProperties: null,
+                             body: body);
+
+        logger.LogInformation($"Sent message: {jsonMessage}");
+    }
+
+    return TypedResults.Ok();
+})
+.WithName("UploadContent")
 .WithOpenApi();
 
 app.Run();
