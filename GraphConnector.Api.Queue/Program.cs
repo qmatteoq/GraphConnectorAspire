@@ -136,7 +136,8 @@ app.MapPost("/uploadContent", ([FromServices] IConnection connection, [FromServi
     ContentMessage message = new ContentMessage
     {
         Action = action,
-        Url = contentMessage.Url
+        Url = contentMessage.FeedUrl,
+        ConnectorId = contentMessage.ConnectorId
     };
 
     using (var channel = connection.CreateModel())

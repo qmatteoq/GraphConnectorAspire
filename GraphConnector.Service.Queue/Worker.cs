@@ -1,6 +1,9 @@
+using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
+using System.Timers;
 using GraphConnector.Library.Configuration;
+using GraphConnector.Library.Connection;
 using GraphConnector.Library.Messages;
 using Microsoft.Graph;
 using RabbitMQ.Client;
@@ -36,11 +39,11 @@ public class Worker : BackgroundService
                              autoDelete: false,
                              arguments: null);
 
-        _channel.QueueDeclare(queue: "schema",
-                               durable: true,
-                               exclusive: false,
-                               autoDelete: false,
-                               arguments: null);
+        //_channel.QueueDeclare(queue: "schema",
+        //                       durable: true,
+        //                       exclusive: false,
+        //                       autoDelete: false,
+        //                       arguments: null);
 
         _channel.QueueDeclare(queue: "content",
                        durable: true,
@@ -57,8 +60,8 @@ public class Worker : BackgroundService
         var connection = new EventingBasicConsumer(_channel);
         connection.Received += Connection_Received;
 
-        var schema = new EventingBasicConsumer(_channel);
-        schema.Received += Schema_Received;
+        //var schema = new EventingBasicConsumer(_channel);
+        //schema.Received += Schema_Received;
 
         var content = new EventingBasicConsumer(_channel);
         content.Received += Content_Received;
@@ -67,9 +70,9 @@ public class Worker : BackgroundService
                              autoAck: true,
                              consumer: connection);
 
-        _channel.BasicConsume(queue: "schema",
-                             autoAck: true,
-                             consumer: schema);
+        //_channel.BasicConsume(queue: "schema",
+        //                     autoAck: true,
+        //                     consumer: schema);
 
         _channel.BasicConsume(queue: "content",
                              autoAck: true,
@@ -92,6 +95,7 @@ public class Worker : BackgroundService
             case ConnectionMessageAction.Create:
                 _logger.LogInformation("Creating connection for {connectorId}", message.ConnectorId);
                 await CreateConnection(message.ConnectorId, message.ConnectorName, message.ConnectorDescription);
+                await CreateSchema(message.ConnectorId, message.FeedUrl);
                 break;
             case ConnectionMessageAction.Delete:
                 await DeleteConnection(message.ConnectorId);
@@ -107,7 +111,7 @@ public class Worker : BackgroundService
     {
         var externalConnection = _connectionConfiguration.GetExternalConnection(connectorId, connectorName, connectorDescription);
 
-        await _graphClient.External.Connections
+        var result = await _graphClient.External.Connections
             .PostAsync(externalConnection);
     }
 
@@ -122,31 +126,31 @@ public class Worker : BackgroundService
 
     #region Schema
 
-    private async void Schema_Received(object? sender, BasicDeliverEventArgs ea)
-    {
-        var body = ea.Body.ToArray();
-        var jsonMessage = Encoding.UTF8.GetString(body);
-        _logger.LogInformation("Received queue message: {message}", jsonMessage);
+    //private async void Schema_Received(object? sender, BasicDeliverEventArgs ea)
+    //{
+    //    var body = ea.Body.ToArray();
+    //    var jsonMessage = Encoding.UTF8.GetString(body);
+    //    _logger.LogInformation("Received queue message: {message}", jsonMessage);
 
-        var message = JsonSerializer.Deserialize<ConnectionMessage>(jsonMessage);
+    //    var message = JsonSerializer.Deserialize<ConnectionMessage>(jsonMessage);
 
-        switch (message.Action)
-        {
-            case ConnectionMessageAction.Create:
-                _logger.LogInformation("Creating schema for {connectorId}", message.ConnectorId);
-                await CreateSchema(message.ConnectorId);
-                break;
-            case ConnectionMessageAction.Delete:
-                //await DeleteConnection();
-                _logger.LogInformation("Deleting schema for {connectorId}", message.ConnectorId);
-                break;
-            case ConnectionMessageAction.Status:
-                _logger.LogInformation("Checking status for {connectorId}", message.ConnectorId);
-                break;
-        }
-    }
+    //    switch (message.Action)
+    //    {
+    //        case ConnectionMessageAction.Create:
+    //            _logger.LogInformation("Creating schema for {connectorId}", message.ConnectorId);
+    //            await CreateSchema(message.ConnectorId);
+    //            break;
+    //        case ConnectionMessageAction.Delete:
+    //            //await DeleteConnection();
+    //            _logger.LogInformation("Deleting schema for {connectorId}", message.ConnectorId);
+    //            break;
+    //        case ConnectionMessageAction.Status:
+    //            _logger.LogInformation("Checking status for {connectorId}", message.ConnectorId);
+    //            break;
+    //    }
+    //}
 
-    private async Task CreateSchema(string connectorId)
+    private async Task CreateSchema(string connectorId, string feedUrl)
     {
         var schema = _connectionConfiguration.GetSchema();
 
@@ -165,6 +169,18 @@ public class Worker : BackgroundService
         var httpClient = Utils.GetHttpClient();
         var res = await httpClient.SendAsync(httpRequestMessage);
         var location = res.Headers.GetValues("location")?.FirstOrDefault();
+        
+        System.Timers.Timer timer = new System.Timers.Timer(TimeSpan.FromMinutes(1));
+        timer.Elapsed += async (sender, e) =>
+        {
+            var response = await httpClient.GetFromJsonAsync<ConnectionOperationResponse>(location);
+            if (response.Status == "completed")
+            {
+                await UploadContent(connectorId, feedUrl);
+                timer.Stop();
+            }
+        };
+
         if (string.IsNullOrEmpty(location))
         {
             _logger.LogError("Schema operation status location is empty");

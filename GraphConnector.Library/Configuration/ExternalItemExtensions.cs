@@ -28,8 +28,8 @@ namespace GraphConnector.Library.Configuration
                       {
                           { "title", item.Title.Text ?? "" },
                           { "description", item.Title.Text ?? "" },
-                          { "url", item.Id },
-                          { "published", item.PublishDate }
+                          { "url", item.Id }
+                          //{ "published", item.PublishDate.Date }
                       }
                 },
                 Content = new()

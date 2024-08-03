@@ -23,17 +23,21 @@
     <input type="text" id="ConnectorId" @bind="ConnectorId" />
 </div>
 
-<div>
-    <label for="FeedUrl">Feed Url</label>
-    <input type="text" id="FeedUrl" @bind="FeedUrl" />
-</div>
-
 <br />
 <p>
     <button class="btn btn-primary" @onclick="CreateGraphConnector">Create Connector</button>
 </p>
 <p>
     <button class="btn btn-primary" @onclick="CreateSchema">Create Schema</button>
+</p>
+
+<div>
+    <label for="FeedUrl">Feed Url</label>
+    <input type="text" id="FeedUrl" @bind="FeedUrl" />
+</div>
+<br />
+<p>
+    <button class="btn btn-primary" @onclick="UploadContent">Upload Content</button>
 </p>
 
 @code {
@@ -65,5 +69,17 @@
         };
 
         await apiClient.QueueSchemaRequestAsync(request);
+    }
+
+    public async Task UploadContent()
+    {
+        QueueContentRequest request = new QueueContentRequest
+        {
+            Action = "create",
+            ConnectorId = ConnectorId,
+            FeedUrl = FeedUrl
+        };
+
+        await apiClient.QueueContentRequestAsync(request);
     }
 }

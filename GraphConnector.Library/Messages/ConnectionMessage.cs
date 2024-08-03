@@ -10,5 +10,7 @@
 
         public string? ConnectorTicket { get; set; }
         public string? Location { get; set; }
+
+        public string? FeedUrl { get; set; }
     }
 }

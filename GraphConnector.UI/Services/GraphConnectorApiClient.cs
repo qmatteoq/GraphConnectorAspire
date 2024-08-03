@@ -22,5 +22,11 @@ namespace GraphConnector.UI.Services
             var response = await _client.PostAsJsonAsync("createSchema", request);
             response.EnsureSuccessStatusCode();
         }
+
+        public async Task QueueContentRequestAsync(QueueContentRequest request)
+        {
+            var response = await _client.PostAsJsonAsync("uploadContent", request);
+            response.EnsureSuccessStatusCode();
+        }
     }
 }
