@@ -32,9 +32,6 @@
     <button class="btn btn-primary" @onclick="CreateGraphConnector">Create Connector</button>
 </p>
 <br />
-<p>
-    <button class="btn btn-primary" @onclick="CheckOperationStatus">Check operation status</button>
-</p>
 <div>
     Operation status: @OperationStatus - Last checked: @LastStatusDate
 </div>
@@ -46,6 +43,8 @@
     private string FeedUrl;
     private string OperationStatus;
     private DateTimeOffset LastStatusDate;
+
+    private System.Timers.Timer timer;
 
     private async Task CreateGraphConnector()
     {
@@ -59,15 +58,22 @@
             };
 
         await apiClient.QueueConnectionRequestAsync(request);
+
+        timer = new System.Timers.Timer(TimeSpan.FromSeconds(15));
+        timer.Elapsed += async (sender, e) =>
+        {
+            await CheckOperationStatus();
+        };
+        timer.Start();
     }
 
     public async Task CreateSchema()
     {
         QueueSchemaRequest request = new QueueSchemaRequest
-        {
-            Action = "create",
-            ConnectorId = ConnectorId
-        };
+            {
+                Action = "create",
+                ConnectorId = ConnectorId
+            };
 
         await apiClient.QueueSchemaRequestAsync(request);
     }
@@ -75,11 +81,11 @@
     public async Task UploadContent()
     {
         QueueContentRequest request = new QueueContentRequest
-        {
-            Action = "create",
-            ConnectorId = ConnectorId,
-            FeedUrl = FeedUrl
-        };
+            {
+                Action = "create",
+                ConnectorId = ConnectorId,
+                FeedUrl = FeedUrl
+            };
 
         await apiClient.QueueContentRequestAsync(request);
     }
@@ -89,5 +95,10 @@
         var result = await apiClient.CheckOperationprogressAsync();
         OperationStatus = result.Status;
         LastStatusDate = result.LastStatusDate;
+        if (result.Status == "Completed")
+        {
+            timer.Stop();
+        }
+        await InvokeAsync(StateHasChanged);
     }
 }

@@ -164,21 +164,33 @@ app.MapGet("/checkOperationProgress", ([FromServices] IConnection connection, [F
 {
     using (var channel = connection.CreateModel())
     {
+        OperationStatusResponse response;
         var message = channel.BasicGet("operations", false);
-        var body = message.Body.ToArray();
-        var jsonMessage = Encoding.UTF8.GetString(body);
-
-        var statusMessage = JsonSerializer.Deserialize<OperationStatusMessage>(jsonMessage);
-
-        OperationStatusResponse response = new()
+        if (message != null)
         {
-            Status = statusMessage.Status,
-            LastStatusDate = statusMessage.LastStatusDate
-        };
+            var body = message.Body.ToArray();
+            var jsonMessage = Encoding.UTF8.GetString(body);
 
-        if (response.Status == "Completed")
+            var statusMessage = JsonSerializer.Deserialize<OperationStatusMessage>(jsonMessage);
+
+            response = new()
+            {
+                Status = statusMessage.Status,
+                LastStatusDate = statusMessage.LastStatusDate
+            };
+
+            if (response.Status == "Completed")
+            {
+                channel.BasicAck(message.DeliveryTag, false);
+            }
+        }
+        else
         {
-            channel.BasicAck(message.DeliveryTag, false);
+            response = new()
+            {
+                Status = "InProgress",
+                LastStatusDate = DateTimeOffset.Now
+            };
         }
 
         return TypedResults.Ok(response);

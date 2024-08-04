@@ -31,8 +31,19 @@ namespace GraphConnector.UI.Services
 
         public async Task<OperationStatusResponse> CheckOperationprogressAsync()
         {
-            var response = await _client.GetFromJsonAsync<OperationStatusResponse>("checkOperationProgress");
-            return response;
+            try
+            {
+                var response = await _client.GetFromJsonAsync<OperationStatusResponse>("checkOperationProgress");
+                return response;
+            }
+            catch
+            {
+                return new OperationStatusResponse
+                {
+                    Status = "InProgress",
+                    LastStatusDate = DateTimeOffset.Now
+                };
+            }
         }
     }
 }

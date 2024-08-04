@@ -117,6 +117,21 @@ public class Worker : BackgroundService
 
     private async Task CreateConnection(string connectorId, string connectorName, string connectorDescription)
     {
+        OperationStatusMessage message = new()
+        {
+            Status = "InProgress",
+            LastStatusDate = DateTime.Now
+        };
+
+        var jsonMessage = JsonSerializer.Serialize(message);
+
+        var body = Encoding.UTF8.GetBytes(jsonMessage);
+
+        _channel.BasicPublish(exchange: string.Empty,
+             routingKey: "operations",
+             basicProperties: null,
+             body: body);
+
         var externalConnection = _connectionConfiguration.GetExternalConnection(connectorId, connectorName, connectorDescription);
 
         var result = await _graphClient.External.Connections
@@ -240,22 +255,6 @@ public class Worker : BackgroundService
         };
 
         timer.Start();
-
-
-        OperationStatusMessage message = new()
-        {
-            Status = "InProgress",
-            LastStatusDate = DateTime.Now
-        };
-
-        var jsonMessage = JsonSerializer.Serialize(message);
-
-        var body = Encoding.UTF8.GetBytes(jsonMessage);
-
-        _channel.BasicPublish(exchange: string.Empty,
-             routingKey: "operations",
-             basicProperties: null,
-             body: body);
     }
 
     #endregion
