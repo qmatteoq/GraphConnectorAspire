@@ -1,4 +1,4 @@
-﻿namespace GraphConnector.Library.Requests
+﻿namespace GraphConnector.Library.Responses
 {
     public class QueueSchemaRequest
     {

@@ -1,11 +1,13 @@
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
+using System.Threading.Channels;
 using System.Timers;
 using GraphConnector.Library.Configuration;
 using GraphConnector.Library.Connection;
 using GraphConnector.Library.Messages;
 using Microsoft.Graph;
+using Microsoft.Graph.Models;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 
@@ -18,7 +20,6 @@ public class Worker : BackgroundService
     private readonly IConnectionConfiguration _connectionConfiguration;
     private IConnection _connection;
     private IModel _channel;
-
 
     public Worker(ILogger<Worker> logger, IConnection connection, GraphServiceClient graphClient, IConnectionConfiguration connectionConfiguration)
     {
@@ -50,6 +51,12 @@ public class Worker : BackgroundService
                        exclusive: false,
                        autoDelete: false,
                        arguments: null);
+
+        _channel.QueueDeclare(queue: "operations",
+                       durable: true,
+                       exclusive: false,
+                       autoDelete: false,
+                       arguments: null);
     }
 
 
@@ -73,6 +80,7 @@ public class Worker : BackgroundService
         //_channel.BasicConsume(queue: "schema",
         //                     autoAck: true,
         //                     consumer: schema);
+
 
         _channel.BasicConsume(queue: "content",
                              autoAck: true,
@@ -169,23 +177,85 @@ public class Worker : BackgroundService
         var httpClient = Utils.GetHttpClient();
         var res = await httpClient.SendAsync(httpRequestMessage);
         var location = res.Headers.GetValues("location")?.FirstOrDefault();
-        
-        System.Timers.Timer timer = new System.Timers.Timer(TimeSpan.FromMinutes(1));
-        timer.Elapsed += async (sender, e) =>
-        {
-            var response = await httpClient.GetFromJsonAsync<ConnectionOperationResponse>(location);
-            if (response.Status == "completed")
-            {
-                await UploadContent(connectorId, feedUrl);
-                timer.Stop();
-            }
-        };
 
         if (string.IsNullOrEmpty(location))
         {
             _logger.LogError("Schema operation status location is empty");
             return;
         }
+
+        Uri uri = new Uri(location);
+        string[] segments = uri.Segments;
+        string operationId = segments.Last().Trim('/');
+
+        System.Timers.Timer timer = new System.Timers.Timer(TimeSpan.FromMinutes(1));
+        timer.Elapsed += async (sender, e) =>
+        {
+            var response = await _graphClient.External
+                .Connections[connectorId]
+                .Operations[operationId]
+                .GetAsync();
+
+            if (response.Status == Microsoft.Graph.Models.ExternalConnectors.ConnectionOperationStatus.Completed)
+            {
+                timer.Stop();
+                await UploadContent(connectorId, feedUrl);
+
+                _channel.QueuePurge("operations");
+
+                OperationStatusMessage message = new()
+                {
+                    Status = "Completed",
+                    LastStatusDate = DateTime.Now
+                };
+
+                var jsonMessage = JsonSerializer.Serialize(message);
+
+                var body = Encoding.UTF8.GetBytes(jsonMessage);
+
+                _channel.BasicPublish(exchange: string.Empty,
+                     routingKey: "operations",
+                     basicProperties: null,
+                     body: body);
+            }
+            else
+            {
+                _channel.QueuePurge("operations");
+
+                OperationStatusMessage message = new()
+                {
+                    Status = "InProgress",
+                    LastStatusDate = DateTime.Now
+                };
+
+                var jsonMessage = JsonSerializer.Serialize(message);
+
+                var body = Encoding.UTF8.GetBytes(jsonMessage);
+
+                _channel.BasicPublish(exchange: string.Empty,
+                     routingKey: "operations",
+                     basicProperties: null,
+                     body: body);
+            }
+        };
+
+        timer.Start();
+
+
+        OperationStatusMessage message = new()
+        {
+            Status = "InProgress",
+            LastStatusDate = DateTime.Now
+        };
+
+        var jsonMessage = JsonSerializer.Serialize(message);
+
+        var body = Encoding.UTF8.GetBytes(jsonMessage);
+
+        _channel.BasicPublish(exchange: string.Empty,
+             routingKey: "operations",
+             basicProperties: null,
+             body: body);
     }
 
     #endregion

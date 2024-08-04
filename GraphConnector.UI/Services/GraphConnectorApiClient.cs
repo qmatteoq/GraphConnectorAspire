@@ -1,4 +1,4 @@
-﻿using GraphConnector.Library.Requests;
+﻿using GraphConnector.Library.Responses;
 
 namespace GraphConnector.UI.Services
 {
@@ -27,6 +27,12 @@ namespace GraphConnector.UI.Services
         {
             var response = await _client.PostAsJsonAsync("uploadContent", request);
             response.EnsureSuccessStatusCode();
+        }
+
+        public async Task<OperationStatusResponse> CheckOperationprogressAsync()
+        {
+            var response = await _client.GetFromJsonAsync<OperationStatusResponse>("checkOperationProgress");
+            return response;
         }
     }
 }

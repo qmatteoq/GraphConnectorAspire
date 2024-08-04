@@ -2,7 +2,7 @@
 
 @inject IConfiguration configuration
 @inject GraphConnectorApiClient apiClient
-@using GraphConnector.Library.Requests
+@using GraphConnector.Library.Responses
 @using GraphConnector.UI.Services
 @rendermode InteractiveServer
 
@@ -22,30 +22,30 @@
     <label for="ConnectorId">Connector Id</label>
     <input type="text" id="ConnectorId" @bind="ConnectorId" />
 </div>
+<div>
+    <label for="FeedUrl">Feed Url</label>
+    <input type="text" id="FeedUrl" @bind="FeedUrl" />
+</div>
 
 <br />
 <p>
     <button class="btn btn-primary" @onclick="CreateGraphConnector">Create Connector</button>
 </p>
-<p>
-    <button class="btn btn-primary" @onclick="CreateSchema">Create Schema</button>
-</p>
-
-<div>
-    <label for="FeedUrl">Feed Url</label>
-    <input type="text" id="FeedUrl" @bind="FeedUrl" />
-</div>
 <br />
 <p>
-    <button class="btn btn-primary" @onclick="UploadContent">Upload Content</button>
+    <button class="btn btn-primary" @onclick="CheckOperationStatus">Check operation status</button>
 </p>
+<div>
+    Operation status: @OperationStatus - Last checked: @LastStatusDate
+</div>
 
 @code {
     private string ConnectorName;
     private string ConnectorDescription;
     private string ConnectorId;
     private string FeedUrl;
-
+    private string OperationStatus;
+    private DateTimeOffset LastStatusDate;
 
     private async Task CreateGraphConnector()
     {
@@ -54,7 +54,8 @@
                 Action = "create",
                 ConnectorId = ConnectorId,
                 ConnectorName = ConnectorName,
-                ConnectorDescription = ConnectorDescription
+                ConnectorDescription = ConnectorDescription,
+                FeedUrl = FeedUrl
             };
 
         await apiClient.QueueConnectionRequestAsync(request);
@@ -81,5 +82,12 @@
         };
 
         await apiClient.QueueContentRequestAsync(request);
+    }
+
+    public async Task CheckOperationStatus()
+    {
+        var result = await apiClient.CheckOperationprogressAsync();
+        OperationStatus = result.Status;
+        LastStatusDate = result.LastStatusDate;
     }
 }

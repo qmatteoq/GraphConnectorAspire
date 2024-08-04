@@ -1,6 +1,6 @@
 using GraphConnector.Library.Configuration;
 using GraphConnector.Library.Messages;
-using GraphConnector.Library.Requests;
+using GraphConnector.Library.Responses;
 using Microsoft.AspNetCore.Mvc;
 using RabbitMQ.Client;
 using System.Text;
@@ -52,7 +52,8 @@ app.MapPost("/createConnection", ([FromServices] IConnection connection, [FromSe
         Action = action,
         ConnectorId = connectionRequest.ConnectorId,
         ConnectorDescription = connectionRequest.ConnectorDescription,
-        ConnectorName = connectionRequest.ConnectorName
+        ConnectorName = connectionRequest.ConnectorName,
+        FeedUrl = connectionRequest.FeedUrl
     };
 
     using (var channel = connection.CreateModel())
@@ -157,6 +158,33 @@ app.MapPost("/uploadContent", ([FromServices] IConnection connection, [FromServi
     return TypedResults.Ok();
 })
 .WithName("UploadContent")
+.WithOpenApi();
+
+app.MapGet("/checkOperationProgress", ([FromServices] IConnection connection, [FromServices] ILogger<Program> logger) =>
+{
+    using (var channel = connection.CreateModel())
+    {
+        var message = channel.BasicGet("operations", false);
+        var body = message.Body.ToArray();
+        var jsonMessage = Encoding.UTF8.GetString(body);
+
+        var statusMessage = JsonSerializer.Deserialize<OperationStatusMessage>(jsonMessage);
+
+        OperationStatusResponse response = new()
+        {
+            Status = statusMessage.Status,
+            LastStatusDate = statusMessage.LastStatusDate
+        };
+
+        if (response.Status == "Completed")
+        {
+            channel.BasicAck(message.DeliveryTag, false);
+        }
+
+        return TypedResults.Ok(response);
+    }
+})
+.WithName("CheckOperationProgress")
 .WithOpenApi();
 
 app.Run();
