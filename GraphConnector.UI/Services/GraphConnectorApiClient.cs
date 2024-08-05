@@ -1,4 +1,5 @@
-﻿using GraphConnector.Library.Responses;
+﻿using GraphConnector.Library.Enums;
+using GraphConnector.Library.Responses;
 
 namespace GraphConnector.UI.Services
 {
@@ -16,19 +17,6 @@ namespace GraphConnector.UI.Services
             var response = await _client.PostAsJsonAsync("createConnection", request);
             response.EnsureSuccessStatusCode();
         }
-
-        public async Task QueueSchemaRequestAsync(QueueSchemaRequest request)
-        {
-            var response = await _client.PostAsJsonAsync("createSchema", request);
-            response.EnsureSuccessStatusCode();
-        }
-
-        public async Task QueueContentRequestAsync(QueueContentRequest request)
-        {
-            var response = await _client.PostAsJsonAsync("uploadContent", request);
-            response.EnsureSuccessStatusCode();
-        }
-
         public async Task<OperationStatusResponse> CheckOperationprogressAsync()
         {
             try
@@ -40,7 +28,7 @@ namespace GraphConnector.UI.Services
             {
                 return new OperationStatusResponse
                 {
-                    Status = "InProgress",
+                    Status = OperationStatus.InProgress,
                     LastStatusDate = DateTimeOffset.Now
                 };
             }

@@ -1,4 +1,4 @@
-using GraphConnector.Library.Configuration;
+using GraphConnector.Library.Enums;
 using GraphConnector.Library.Messages;
 using GraphConnector.Library.Responses;
 using Microsoft.AspNetCore.Mvc;
@@ -30,26 +30,13 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
+//endpoint to call to trigger the creation of the Graph Connector
 app.MapPost("/createConnection", ([FromServices] IConnection connection, [FromServices] ILogger<Program> logger, [FromBody] QueueConnectionRequest connectionRequest) =>
 {
-    ConnectionMessageAction action;
-    switch (connectionRequest.Action)
-    {
-        case "create":
-            action = ConnectionMessageAction.Create;
-            break;
-        case "delete":
-            action = ConnectionMessageAction.Delete;
-            break;
-        case "status":
-        default:
-            action = ConnectionMessageAction.Status;
-            break;
-    }
-
+    //create a message for the queue with the information required to create the Graph Connector
     ConnectionMessage message = new ConnectionMessage
     {
-        Action = action,
+        Action = connectionRequest.Action,
         ConnectorId = connectionRequest.ConnectorId,
         ConnectorDescription = connectionRequest.ConnectorDescription,
         ConnectorName = connectionRequest.ConnectorName,
@@ -62,12 +49,13 @@ app.MapPost("/createConnection", ([FromServices] IConnection connection, [FromSe
 
         var body = Encoding.UTF8.GetBytes(jsonMessage);
 
+        //send the message to the queue called "connections"
         channel.BasicPublish(exchange: string.Empty,
                              routingKey: "connections",
                              basicProperties: null,
                              body: body);
 
-        logger.LogInformation($"Sent message: {jsonMessage}");
+        logger.LogInformation($"Sending create connection request with payload: {jsonMessage}");
     }
 
     return TypedResults.Ok();
@@ -77,24 +65,9 @@ app.MapPost("/createConnection", ([FromServices] IConnection connection, [FromSe
 
 app.MapPost("/createSchema", ([FromServices] IConnection connection, [FromServices] ILogger<Program> logger, [FromBody] QueueConnectionRequest schemaRequest) =>
 {
-    ConnectionMessageAction action;
-    switch (schemaRequest.Action)
-    {
-        case "create":
-            action = ConnectionMessageAction.Create;
-            break;
-        case "delete":
-            action = ConnectionMessageAction.Delete;
-            break;
-        case "status":
-        default:
-            action = ConnectionMessageAction.Status;
-            break;
-    }
-
     ConnectionMessage message = new ConnectionMessage
     {
-        Action = action,
+        Action = schemaRequest.Action,
         ConnectorId = schemaRequest.ConnectorId
     };
 
@@ -118,53 +91,55 @@ app.MapPost("/createSchema", ([FromServices] IConnection connection, [FromServic
 .WithName("CreateSchema")
 .WithOpenApi();
 
-app.MapPost("/uploadContent", ([FromServices] IConnection connection, [FromServices] ILogger<Program> logger, [FromBody] QueueContentRequest contentMessage) =>
-{
-    ContentAction action;
-    switch (contentMessage.Action)
-    {
-        case "create":
-            action = ContentAction.Create;
-            break;
-        case "delete":
-            action = ContentAction.Delete;
-            break;
-        default:
-            action = ContentAction.Create;
-            break;
-    }
+//app.MapPost("/uploadContent", ([FromServices] IConnection connection, [FromServices] ILogger<Program> logger, [FromBody] QueueContentRequest contentMessage) =>
+//{
+//    ContentAction action;
+//    switch (contentMessage.Action)
+//    {
+//        case "create":
+//            action = ContentAction.Create;
+//            break;
+//        case "delete":
+//            action = ContentAction.Delete;
+//            break;
+//        default:
+//            action = ContentAction.Create;
+//            break;
+//    }
 
-    ContentMessage message = new ContentMessage
-    {
-        Action = action,
-        Url = contentMessage.FeedUrl,
-        ConnectorId = contentMessage.ConnectorId
-    };
+//    ContentMessage message = new ContentMessage
+//    {
+//        Action = action,
+//        Url = contentMessage.FeedUrl,
+//        ConnectorId = contentMessage.ConnectorId
+//    };
 
-    using (var channel = connection.CreateModel())
-    {
-        var jsonMessage = JsonSerializer.Serialize(message);
+//    using (var channel = connection.CreateModel())
+//    {
+//        var jsonMessage = JsonSerializer.Serialize(message);
 
-        var body = Encoding.UTF8.GetBytes(jsonMessage);
+//        var body = Encoding.UTF8.GetBytes(jsonMessage);
 
-        channel.BasicPublish(exchange: string.Empty,
-                             routingKey: "content",
-                             basicProperties: null,
-                             body: body);
+//        channel.BasicPublish(exchange: string.Empty,
+//                             routingKey: "content",
+//                             basicProperties: null,
+//                             body: body);
 
-        logger.LogInformation($"Sent message: {jsonMessage}");
-    }
+//        logger.LogInformation($"Sent message: {jsonMessage}");
+//    }
 
-    return TypedResults.Ok();
-})
-.WithName("UploadContent")
-.WithOpenApi();
+//    return TypedResults.Ok();
+//})
+//.WithName("UploadContent")
+//.WithOpenApi();
 
+//endpoint to check the progress of the Graph Connector creation operation
 app.MapGet("/checkOperationProgress", ([FromServices] IConnection connection, [FromServices] ILogger<Program> logger) =>
 {
     using (var channel = connection.CreateModel())
     {
         OperationStatusResponse response;
+        //check if there's a message in the queue called "operations"
         var message = channel.BasicGet("operations", false);
         if (message != null)
         {
@@ -173,22 +148,25 @@ app.MapGet("/checkOperationProgress", ([FromServices] IConnection connection, [F
 
             var statusMessage = JsonSerializer.Deserialize<OperationStatusMessage>(jsonMessage);
 
+            //generate an API response using the information from the message
             response = new()
             {
                 Status = statusMessage.Status,
                 LastStatusDate = statusMessage.LastStatusDate
             };
 
-            if (response.Status == "Completed")
+            //if the message describes that the operation is completed, acknowledge the message so that it gets deleted from the queue
+            if (response.Status == OperationStatus.Completed)
             {
                 channel.BasicAck(message.DeliveryTag, false);
             }
         }
         else
         {
+            //if there are no messages, it means the operation is still in progress
             response = new()
             {
-                Status = "InProgress",
+                Status = OperationStatus.InProgress,
                 LastStatusDate = DateTimeOffset.Now
             };
         }

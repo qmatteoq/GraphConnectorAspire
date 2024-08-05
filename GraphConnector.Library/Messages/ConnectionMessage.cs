@@ -1,8 +1,10 @@
-﻿namespace GraphConnector.Library.Messages
+﻿using GraphConnector.Library.Enums;
+
+namespace GraphConnector.Library.Messages
 {
     public class ConnectionMessage
     {
-        public ConnectionMessageAction Action { get; set; }
+        public ConnectionAction Action { get; set; }
         public string? ConnectorId { get; set; }
 
         public string? ConnectorDescription { get; set; }

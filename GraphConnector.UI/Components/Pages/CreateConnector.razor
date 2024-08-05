@@ -2,6 +2,7 @@
 
 @inject IConfiguration configuration
 @inject GraphConnectorApiClient apiClient
+@using GraphConnector.Library.Enums
 @using GraphConnector.Library.Responses
 @using GraphConnector.UI.Services
 @rendermode InteractiveServer
@@ -33,7 +34,7 @@
 </p>
 <br />
 <div>
-    Operation status: @OperationStatus - Last checked: @LastStatusDate
+    Operation status: @Status - Last checked: @LastStatusDate
 </div>
 
 @code {
@@ -41,8 +42,8 @@
     private string ConnectorDescription;
     private string ConnectorId;
     private string FeedUrl;
-    private string OperationStatus;
-    private DateTimeOffset LastStatusDate;
+    private string Status;
+    private DateTimeOffset? LastStatusDate;
 
     private System.Timers.Timer timer;
 
@@ -50,7 +51,7 @@
     {
         QueueConnectionRequest request = new QueueConnectionRequest
             {
-                Action = "create",
+                Action = ConnectionAction.Create,
                 ConnectorId = ConnectorId,
                 ConnectorName = ConnectorName,
                 ConnectorDescription = ConnectorDescription,
@@ -67,38 +68,21 @@
         timer.Start();
     }
 
-    public async Task CreateSchema()
-    {
-        QueueSchemaRequest request = new QueueSchemaRequest
-            {
-                Action = "create",
-                ConnectorId = ConnectorId
-            };
-
-        await apiClient.QueueSchemaRequestAsync(request);
-    }
-
-    public async Task UploadContent()
-    {
-        QueueContentRequest request = new QueueContentRequest
-            {
-                Action = "create",
-                ConnectorId = ConnectorId,
-                FeedUrl = FeedUrl
-            };
-
-        await apiClient.QueueContentRequestAsync(request);
-    }
-
     public async Task CheckOperationStatus()
     {
         var result = await apiClient.CheckOperationprogressAsync();
-        OperationStatus = result.Status;
-        LastStatusDate = result.LastStatusDate;
-        if (result.Status == "Completed")
+        switch (result.Status)
         {
-            timer.Stop();
+            case OperationStatus.Completed:
+                Status = "Completed";
+                timer.Stop();
+                break;
+            case OperationStatus.InProgress:
+                Status = "In Progress";
+                break;
         }
+
+        LastStatusDate = result.LastStatusDate;
         await InvokeAsync(StateHasChanged);
     }
 }

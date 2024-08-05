@@ -1,13 +1,9 @@
-using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
-using System.Threading.Channels;
-using System.Timers;
 using GraphConnector.Library.Configuration;
-using GraphConnector.Library.Connection;
+using GraphConnector.Library.Enums;
 using GraphConnector.Library.Messages;
 using Microsoft.Graph;
-using Microsoft.Graph.Models;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 
@@ -34,17 +30,13 @@ public class Worker : BackgroundService
     private void InitializeRabbitMQ()
     {
         _channel = _connection.CreateModel();
+
+        //initialize the queue to manage the creation of the connection
         _channel.QueueDeclare(queue: "connections",
                              durable: true,
                              exclusive: false,
                              autoDelete: false,
                              arguments: null);
-
-        //_channel.QueueDeclare(queue: "schema",
-        //                       durable: true,
-        //                       exclusive: false,
-        //                       autoDelete: false,
-        //                       arguments: null);
 
         _channel.QueueDeclare(queue: "content",
                        durable: true,
@@ -52,6 +44,7 @@ public class Worker : BackgroundService
                        autoDelete: false,
                        arguments: null);
 
+        //initialize the queue to manage the status of the creation operation
         _channel.QueueDeclare(queue: "operations",
                        durable: true,
                        exclusive: false,
@@ -64,27 +57,13 @@ public class Worker : BackgroundService
     {
         stoppingToken.ThrowIfCancellationRequested();
 
+        //consume the connection queue and process the messages
         var connection = new EventingBasicConsumer(_channel);
         connection.Received += Connection_Received;
-
-        //var schema = new EventingBasicConsumer(_channel);
-        //schema.Received += Schema_Received;
-
-        var content = new EventingBasicConsumer(_channel);
-        content.Received += Content_Received;
 
         _channel.BasicConsume(queue: "connections",
                              autoAck: true,
                              consumer: connection);
-
-        //_channel.BasicConsume(queue: "schema",
-        //                     autoAck: true,
-        //                     consumer: schema);
-
-
-        _channel.BasicConsume(queue: "content",
-                             autoAck: true,
-                             consumer: content);
 
         return Task.CompletedTask;
     }
@@ -100,16 +79,17 @@ public class Worker : BackgroundService
 
         switch (message.Action)
         {
-            case ConnectionMessageAction.Create:
+            case ConnectionAction.Create:
                 _logger.LogInformation("Creating connection for {connectorId}", message.ConnectorId);
+                //if it's a creation request, trigger the creation of the connection and the schema
                 await CreateConnection(message.ConnectorId, message.ConnectorName, message.ConnectorDescription);
                 await CreateSchema(message.ConnectorId, message.FeedUrl);
                 break;
-            case ConnectionMessageAction.Delete:
+            case ConnectionAction.Delete:
                 await DeleteConnection(message.ConnectorId);
                 _logger.LogInformation("Deleting connection for {connectorId}", message.ConnectorId);
                 break;
-            case ConnectionMessageAction.Status:
+            case ConnectionAction.Status:
                 _logger.LogInformation("Checking status for {connectorId}", message.ConnectorId);
                 break;
         }
@@ -119,7 +99,7 @@ public class Worker : BackgroundService
     {
         OperationStatusMessage message = new()
         {
-            Status = "InProgress",
+            Status = OperationStatus.InProgress,
             LastStatusDate = DateTime.Now
         };
 
@@ -132,14 +112,17 @@ public class Worker : BackgroundService
              basicProperties: null,
              body: body);
 
+        //get the JSON that descibes the connection
         var externalConnection = _connectionConfiguration.GetExternalConnection(connectorId, connectorName, connectorDescription);
 
+        //call the Microsoft Graph to create the connection
         var result = await _graphClient.External.Connections
             .PostAsync(externalConnection);
     }
 
     private async Task DeleteConnection(string connectorId)
     {
+        //delete a Graph Connector
         await _graphClient.External
             .Connections[connectorId]
             .DeleteAsync();
@@ -148,35 +131,12 @@ public class Worker : BackgroundService
     #endregion
 
     #region Schema
-
-    //private async void Schema_Received(object? sender, BasicDeliverEventArgs ea)
-    //{
-    //    var body = ea.Body.ToArray();
-    //    var jsonMessage = Encoding.UTF8.GetString(body);
-    //    _logger.LogInformation("Received queue message: {message}", jsonMessage);
-
-    //    var message = JsonSerializer.Deserialize<ConnectionMessage>(jsonMessage);
-
-    //    switch (message.Action)
-    //    {
-    //        case ConnectionMessageAction.Create:
-    //            _logger.LogInformation("Creating schema for {connectorId}", message.ConnectorId);
-    //            await CreateSchema(message.ConnectorId);
-    //            break;
-    //        case ConnectionMessageAction.Delete:
-    //            //await DeleteConnection();
-    //            _logger.LogInformation("Deleting schema for {connectorId}", message.ConnectorId);
-    //            break;
-    //        case ConnectionMessageAction.Status:
-    //            _logger.LogInformation("Checking status for {connectorId}", message.ConnectorId);
-    //            break;
-    //    }
-    //}
-
     private async Task CreateSchema(string connectorId, string feedUrl)
     {
+        //get the JSON that describes the schema
         var schema = _connectionConfiguration.GetSchema();
 
+        //call the Microsot Graph to create the schema
         var schemaRequest = _graphClient.External
             .Connections[connectorId]
             .Schema
@@ -191,6 +151,7 @@ public class Worker : BackgroundService
 
         var httpClient = Utils.GetHttpClient();
         var res = await httpClient.SendAsync(httpRequestMessage);
+        //get the location header, which contains the URL that you can use to check the operation status (schema creation can take between 5 and 15 minutes)
         var location = res.Headers.GetValues("location")?.FirstOrDefault();
 
         if (string.IsNullOrEmpty(location))
@@ -199,28 +160,33 @@ public class Worker : BackgroundService
             return;
         }
 
+        //get the operation id from the URL
         Uri uri = new Uri(location);
         string[] segments = uri.Segments;
         string operationId = segments.Last().Trim('/');
 
+        //start a timer to check every minute the status of the operation. This is because you can start uploading the items only when the schema has been created.
         System.Timers.Timer timer = new System.Timers.Timer(TimeSpan.FromMinutes(1));
         timer.Elapsed += async (sender, e) =>
         {
+            //call the Microsoft Graph to check the status of the creation operation
             var response = await _graphClient.External
                 .Connections[connectorId]
                 .Operations[operationId]
                 .GetAsync();
 
+            //if the schema has been created, go on and upload the content from the external data source
             if (response.Status == Microsoft.Graph.Models.ExternalConnectors.ConnectionOperationStatus.Completed)
             {
                 timer.Stop();
                 await UploadContent(connectorId, feedUrl);
 
+                //clean the queue and send a message that the operation is completed
                 _channel.QueuePurge("operations");
 
                 OperationStatusMessage message = new()
                 {
-                    Status = "Completed",
+                    Status = OperationStatus.Completed,
                     LastStatusDate = DateTime.Now
                 };
 
@@ -235,11 +201,12 @@ public class Worker : BackgroundService
             }
             else
             {
+                //if the operation is still in progress, clean the queue and send an updated message with an updated date and time
                 _channel.QueuePurge("operations");
 
                 OperationStatusMessage message = new()
                 {
-                    Status = "InProgress",
+                    Status = OperationStatus.InProgress,
                     LastStatusDate = DateTime.Now
                 };
 
@@ -254,6 +221,7 @@ public class Worker : BackgroundService
             }
         };
 
+        //start the timer
         timer.Start();
     }
 
@@ -261,35 +229,15 @@ public class Worker : BackgroundService
 
     #region Content
 
-    private async void Content_Received(object? sender, BasicDeliverEventArgs ea)
-    {
-        var body = ea.Body.ToArray();
-        var jsonMessage = Encoding.UTF8.GetString(body);
-        _logger.LogInformation("Received queue message: {message}", jsonMessage);
-
-        var message = JsonSerializer.Deserialize<ContentMessage>(jsonMessage);
-
-        switch (message.Action)
-        {
-            case ContentAction.Create:
-                _logger.LogInformation($"Uploading content from RSS feed: {message.Url}");
-                await UploadContent(message.ConnectorId, message.Url);
-                break;
-            case ContentAction.Delete:
-                //await DeleteConnection();
-                _logger.LogInformation($"Uploading content from RSS feed: {message.Url}");
-                break;
-          
-        }
-    }
-
     private async Task UploadContent(string connectordId, string url)
     {
+        //parse the RSS feed to get the items
         RssParser parser = new RssParser();
         var items = parser.ParseRss(url);
 
         foreach (var rssItem in items)
         {            
+            //conver the RSS item into an ExternalItem, which is used by the Microsoft Graph to represent an external content
             var externalItem = rssItem.ToExternalItem();
             _logger.LogInformation($"Uploading item with id {externalItem.Id}");
 
@@ -297,6 +245,7 @@ public class Worker : BackgroundService
             {
                 try
                 {
+                    //call the Microsoft Graph to upload the item
                     await _graphClient.External
                        .Connections[connectordId]
                        .Items[externalItem.Id]

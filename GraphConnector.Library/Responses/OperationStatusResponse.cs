@@ -1,8 +1,10 @@
-﻿namespace GraphConnector.Library.Responses
+﻿using GraphConnector.Library.Enums;
+
+namespace GraphConnector.Library.Responses
 {
     public class OperationStatusResponse
     {
-        public string Status { get; set; }
+        public OperationStatus Status { get; set; }
         public DateTimeOffset LastStatusDate { get; set; }
     }
 }

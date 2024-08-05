@@ -5,6 +5,7 @@ namespace GraphConnector.Library.Configuration
 {
     public static class ExternalItemExtensions
     {
+
         public static ExternalItem ToExternalItem(this SyndicationItem item)
         {
             string slug = string.Empty;
