@@ -7,26 +7,26 @@
 @using GraphConnector.UI.Services
 @rendermode InteractiveServer
 
-<h3>Create Connector</h3>
+<h3>Create Graph Connector</h3>
 
-<div>
-    <label for="ConnectorName">Connector Name</label>
-    <input type="text" id="ConnectorName" @bind="ConnectorName" />
-</div>
-
-<div>
-    <label for="ConnectorDescription">Connector Description</label>
-    <input type="text" id="ConnectorDescription" @bind="ConnectorDescription" />
-</div>
-
-<div>
-    <label for="ConnectorId">Connector Id</label>
-    <input type="text" id="ConnectorId" @bind="ConnectorId" />
-</div>
-<div>
-    <label for="FeedUrl">Feed Url</label>
-    <input type="text" id="FeedUrl" @bind="FeedUrl" />
-</div>
+<table>
+    <tr>
+        <td><label for="ConnectorName">Connector Name</label></td>
+        <td><input type="text" id="ConnectorName" @bind="ConnectorName" /></td>
+    </tr>
+    <tr>
+        <td><label for="ConnectorDescription">Connector Description</label></td>
+        <td><input type="text" id="ConnectorDescription" @bind="ConnectorDescription" /></td>
+    </tr>
+    <tr>
+        <td><label for="ConnectorId">Connector Id</label></td>
+        <td><input type="text" id="ConnectorId" @bind="ConnectorId" /></td
+    </tr>
+    <tr>
+        <td><label for="FeedUrl">Feed Url</label></td>
+        <td><input type="text" id="FeedUrl" @bind="FeedUrl" /></td
+    </tr>
+</table>
 
 <br />
 <p>

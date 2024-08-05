@@ -2,6 +2,7 @@ using Azure.Core.Pipeline;
 using Azure.Identity;
 using GraphConnector.Library.Configuration;
 using GraphConnector.Library.Connection;
+using GraphConnector.Library.Models;
 using GraphConnector.Service.Queue;
 using Microsoft.Graph;
 using Microsoft.Identity.Client;
@@ -20,9 +21,11 @@ builder.Services.AddSingleton(s =>
 
     var config = builder.Configuration;
 
-    var clientId = config["Entra:ClientId"];
-    var clientSecret = config["Entra:ClientSecret"];
-    var tenantId = config["Entra:TenantId"];
+    var entraConfiguration = config.Get<EntraAppConfiguration>();
+
+    var clientId = entraConfiguration.appId;
+    var clientSecret = entraConfiguration.secrets[0].value;
+    var tenantId = entraConfiguration.tenantId;
 
     var credential = new ClientSecretCredential(tenantId, clientId, clientSecret, options);
     var handlers = GraphClientFactory.CreateDefaultHandlers();
